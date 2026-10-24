@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wall of Fame - Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+
+  <div class="max-w-md w-full bg-slate-800 rounded-xl p-6 shadow-2xl border border-slate-700">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-indigo-400">Wall of Fame</h2>
+      <span class="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded border border-yellow-500/30">Testing Mode</span>
+    </div>
+
+    <!-- Form Registrasi -->
+    <form id="registrationForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Nama Lengkap</label>
+        <input type="text" id="fullName" required class="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-indigo-500" placeholder="Contoh: Budi Santoso">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Email</label>
+        <input type="email" id="email" required class="w-full p-3 rounded bg-slate-700 border border-slate-600 focus:outline-none focus:border-indigo-500" placeholder="budi@gmail.com">
+      </div>
+
+      <!-- Kamera Input -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Ambil Foto (Live Capture)</label>
+        <input type="file" id="cameraInput" accept="image/*" capture="user" class="hidden">
+        <button type="button" onclick="document.getElementById('cameraInput').click()" class="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded border border-dashed border-indigo-400 text-indigo-300 font-semibold flex items-center justify-center gap-2">
+          📸 Buka Kamera / Ambil Foto
+        </button>
+      </div>
+    </form>
+
+    <!-- Canvas Tersembunyi -->
+    <canvas id="photoCanvas" class="hidden"></canvas>
+
+    <hr class="my-6 border-slate-700">
+
+    <a href="display.html" target="_blank" class="block text-center py-2 bg-slate-700 hover:bg-slate-600 text-sm font-medium text-slate-200 rounded">
+      📺 Buka Layar LED (display.html)
+    </a>
+  </div>
+
+  <!-- MODAL PREVIEW HASIL FOTO -->
+  <div id="previewModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 max-w-sm w-full text-center space-y-4 shadow-2xl">
+      <h3 class="text-lg font-bold text-indigo-400">Preview Hasil Foto</h3>
+      
+      <!-- Image Preview -->
+      <img id="modalPreviewImage" class="w-full aspect-square object-cover rounded-lg border border-slate-600 shadow">
+
+      <p class="text-xs text-slate-400">Pastikan posisi foto sudah pas sebelum ditayangkan.</p>
+
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button type="button" id="retakeBtn" class="py-2.5 bg-slate-700 hover:bg-slate-600 rounded text-sm font-semibold text-slate-300">
+          🔄 Foto Ulang
+        </button>
+        <button type="button" id="confirmSubmitBtn" class="py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-bold text-white shadow-lg">
+          🚀 Submit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const displayChannel = new BroadcastChannel('wall_of_fame_sync');
+
+    const cameraInput = document.getElementById('cameraInput');
+    const photoCanvas = document.getElementById('photoCanvas');
+    const ctx = photoCanvas.getContext('2d');
+    const previewModal = document.getElementById('previewModal');
+    const modalPreviewImage = document.getElementById('modalPreviewImage');
+    let finalImageDataUrl = null;
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = (err) => reject(err);
+        img.src = src;
+      });
+    }
+
+    cameraInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fullName = document.getElementById('fullName').value;
+      if (!fullName) {
+        alert("Mohon isi Nama Lengkap terlebih dahulu!");
+        cameraInput.value = "";
+        return;
+      }
+
+      try {
+        const userImgUrl = URL.createObjectURL(file);
+        
+        const [userImg, frameImg] = await Promise.all([
+          loadImage(userImgUrl),
+          loadImage('./assets/frame.png').catch(() => null)
+        ]);
+
+        photoCanvas.width = 1080;
+        photoCanvas.height = 1080;
+
+        // 1. Draw Foto Peserta
+        ctx.drawImage(userImg, 0, 0, 1080, 1080);
+
+        // 2. Draw Frame jika file assets/frame.png ada
+        if (frameImg) {
+          ctx.drawImage(frameImg, 0, 0, 1080, 1080);
+        } else {
+          ctx.strokeStyle = '#6366f1';
+          ctx.lineWidth = 30;
+          ctx.strokeRect(0, 0, 1080, 1080);
+        }
+
+        finalImageDataUrl = photoCanvas.toDataURL('image/jpeg', 0.85);
+        modalPreviewImage.src = finalImageDataUrl;
+        
+        previewModal.classList.remove('hidden');
+
+      } catch (err) {
+        alert("Gagal memproses foto: " + err.message);
+      }
+    });
+
+    document.getElementById('retakeBtn').addEventListener('click', () => {
+      previewModal.classList.add('hidden');
+      cameraInput.value = "";
+      finalImageDataUrl = null;
+      cameraInput.click();
+    });
+
+    document.getElementById('confirmSubmitBtn').addEventListener('click', () => {
+      if (!finalImageDataUrl) return;
+
+      const newLog = {
+        id: Date.now(),
+        full_name: document.getElementById('fullName').value,
+        photo_url: finalImageDataUrl,
+        is_displayed: true
+      };
+
+      const existingLogs = JSON.parse(localStorage.getItem('test_event_logs') || '[]');
+      existingLogs.unshift(newLog);
+      localStorage.setItem('test_event_logs', JSON.stringify(existingLogs));
+
+      displayChannel.postMessage({ type: 'NEW_PHOTO', data: newLog });
+
+      alert("Berhasil! Foto kamu langsung ditayangkan di Wall of Fame.");
+      
+      previewModal.classList.add('hidden');
+      document.getElementById('registrationForm').reset();
+      cameraInput.value = "";
+      finalImageDataUrl = null;
+    });
+  </script>
+</body>
+</html>

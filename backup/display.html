@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED Wall Display</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Backup CSS jika Tailwind CDN gagal dimuat */
+    body {
+      background-color: #000000 !important;
+      color: #ffffff !important;
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.6); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .animate-pop { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+  </style>
+</head>
+<body class="bg-black text-white min-h-screen p-6 flex flex-col items-center justify-center">
+
+  <h1 class="text-4xl font-extrabold text-indigo-400 mb-8 tracking-widest uppercase text-center" style="color: #818cf8; font-size: 2rem; margin-bottom: 2rem; font-weight: 800; letter-spacing: 0.1em;">
+    WALL OF FAME
+  </h1>
+
+  <!-- Grid Foto Tanpa Teks Nama -->
+  <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-7xl" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; width: 100%; max-width: 1280px;">
+    <!-- Card foto akan dirender di sini -->
+  </div>
+
+  <button onclick="clearData()" class="mt-8 text-xs text-red-500/40 hover:text-red-400 underline" style="margin-top: 2rem; font-size: 0.75rem; color: #ef4444; background: none; border: none; cursor: pointer; text-decoration: underline; opacity: 0.5;">
+    Reset Data Test
+  </button>
+
+  <script>
+    const galleryGrid = document.getElementById('galleryGrid');
+    const displayChannel = new BroadcastChannel('wall_of_fame_sync');
+
+    function loadDisplay() {
+      const data = JSON.parse(localStorage.getItem('test_event_logs') || '[]');
+      galleryGrid.innerHTML = '';
+
+      if (data.length === 0) {
+        galleryGrid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: #64748b; padding: 3rem 0; font-size: 1.125rem;" class="col-span-full text-center text-slate-500 py-12 text-lg">Belum ada foto yang ditayangkan.</p>`;
+        return;
+      }
+
+      data.forEach((item, index) => {
+        renderCard(item, index === 0);
+      });
+    }
+
+    function renderCard(item, isNew = false) {
+      if (galleryGrid.querySelector('p')) galleryGrid.innerHTML = '';
+
+      const card = document.createElement('div');
+      card.className = `bg-slate-900 rounded-2xl p-2 border border-slate-800 shadow-2xl overflow-hidden ${isNew ? 'animate-pop ring-2 ring-indigo-500' : ''}`;
+      card.style.backgroundColor = '#0f172a';
+      card.style.borderRadius = '1rem';
+      card.style.padding = '0.5rem';
+      card.style.border = '1px solid #1e293b';
+
+      card.innerHTML = `
+        <img src="${item.photo_url}" style="width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 0.75rem;" class="w-full aspect-square object-cover rounded-xl">
+      `;
+
+      if (isNew && galleryGrid.firstChild) {
+        galleryGrid.insertBefore(card, galleryGrid.firstChild);
+      } else {
+        galleryGrid.appendChild(card);
+      }
+    }
+
+    displayChannel.onmessage = (event) => {
+      if (event.data.type === 'NEW_PHOTO') {
+        loadDisplay();
+      }
+    };
+
+    function clearData() {
+      localStorage.removeItem('test_event_logs');
+      loadDisplay();
+    }
+
+    loadDisplay();
+  </script>
+</body>
+</html>

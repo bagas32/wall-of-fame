@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Operator - Wall of Fame</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 text-white p-6">
+  <h1 class="text-2xl font-bold mb-6 text-red-400">Operator Control & Moderasi</h1>
+  <div id="adminGrid" class="grid grid-cols-2 md:grid-cols-6 gap-4"></div>
+
+  <script>
+    const SUPABASE_URL = "YOUR_SUPABASE_URL";
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loadAdminFeed() {
+      const { data } = await supabase.from('event_logs').select('*').order('created_at', { ascending: false });
+      const grid = document.getElementById('adminGrid');
+      grid.innerHTML = '';
+      data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-800 p-3 rounded border border-slate-700 text-center";
+        div.innerHTML = `
+          <img src="${item.photo_url}" class="w-full aspect-square object-cover rounded mb-2">
+          <p class="font-bold text-sm truncate">${item.full_name}</p>
+          <button onclick="toggleDisplay('${item.id}', ${!item.is_displayed})" 
+            class="mt-2 text-xs px-3 py-1 rounded ${item.is_displayed ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'}">
+            ${item.is_displayed ? 'Hide dari LED' : 'Show ke LED'}
+          </button>
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    async function toggleDisplay(id, status) {
+      await supabase.from('event_logs').update({ is_displayed: status }).eq('id', id);
+      loadAdminFeed();
+    }
+
+    loadAdminFeed();
+  </script>
+</body>
+</html>
