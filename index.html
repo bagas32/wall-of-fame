@@ -1,0 +1,115 @@
+<!-- Tambahkan SDK Supabase di bagian <head> -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  // Ganti dengan URL dan ANON KEY milikmu dari Supabase
+  const SUPABASE_URL = "https://vaatfevtoftzsupcorht.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhYXRmZXZ0b2Z0enN1cGNvcmh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjAzMDAsImV4cCI6MjEwODQzNjMwMH0.d4PQVlLdy-SEexpmok51D8qxpMG8jpOm4WNMymkv64c";
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const cameraInput = document.getElementById('cameraInput');
+  const photoCanvas = document.getElementById('photoCanvas');
+  const ctx = photoCanvas.getContext('2d');
+  const previewModal = document.getElementById('previewModal');
+  const modalPreviewImage = document.getElementById('modalPreviewImage');
+  let finalBlob = null;
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = (err) => reject(err);
+      img.src = src;
+    });
+  }
+
+  cameraInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fullName = document.getElementById('fullName').value;
+    if (!fullName) {
+      alert("Mohon isi Nama Lengkap terlebih dahulu!");
+      cameraInput.value = "";
+      return;
+    }
+
+    try {
+      const userImgUrl = URL.createObjectURL(file);
+      const [userImg, frameImg] = await Promise.all([
+        loadImage(userImgUrl),
+        loadImage('frame.png').catch(() => null)
+      ]);
+
+      photoCanvas.width = 1080;
+      photoCanvas.height = 1080;
+
+      ctx.drawImage(userImg, 0, 0, 1080, 1080);
+      if (frameImg) ctx.drawImage(frameImg, 0, 0, 1080, 1080);
+
+      // Convert Canvas ke Blob (File Gambar)
+      photoCanvas.toBlob((blob) => {
+        finalBlob = blob;
+        modalPreviewImage.src = URL.createObjectURL(blob);
+        previewModal.classList.remove('hidden');
+      }, 'image/jpeg', 0.85);
+
+    } catch (err) {
+      alert("Gagal memproses foto: " + err.message);
+    }
+  });
+
+  document.getElementById('retakeBtn').addEventListener('click', () => {
+    previewModal.classList.add('hidden');
+    cameraInput.value = "";
+    finalBlob = null;
+    cameraInput.click();
+  });
+
+  document.getElementById('confirmSubmitBtn').addEventListener('click', async () => {
+    if (!finalBlob) return;
+
+    const submitBtn = document.getElementById('confirmSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Mengunggah...";
+
+    try {
+      const fileName = `photo_${Date.now()}.jpg`;
+
+      // 1. Upload Foto ke Supabase Storage
+      const { error: storageError } = await supabase.storage
+        .from('photos')
+        .upload(fileName, finalBlob);
+
+      if (storageError) throw storageError;
+
+      const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${fileName}`;
+
+      // 2. Insert Data Log ke Database Supabase
+      const { error: dbError } = await supabase
+        .from('event_logs')
+        .insert([{
+          full_name: document.getElementById('fullName').value,
+          email: document.getElementById('email').value,
+          photo_url: photoUrl,
+          is_displayed: true
+        }]);
+
+      if (dbError) throw dbError;
+
+      alert("Berhasil! Foto kamu langsung ditayangkan di Wall of Fame.");
+      
+      previewModal.classList.add('hidden');
+      document.getElementById('registrationForm').reset();
+      cameraInput.value = "";
+      finalBlob = null;
+
+    } catch (err) {
+      alert("Terjadi kesalahan: " + err.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "🚀 Tayangkan!";
+    }
+  });
+</script>
