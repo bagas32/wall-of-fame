@@ -1,11 +1,13 @@
-<!-- Tambahkan SDK Supabase di bagian <head> -->
+<!-- SDK Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-  // Ganti dengan URL dan ANON KEY milikmu dari Supabase
+  // 1. Ganti URL & Anon Key kamu di sini
   const SUPABASE_URL = "https://vaatfevtoftzsupcorht.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhYXRmZXZ0b2Z0enN1cGNvcmh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjAzMDAsImV4cCI6MjEwODQzNjMwMH0.d4PQVlLdy-SEexpmok51D8qxpMG8jpOm4WNMymkv64c";
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // 2. Ubah nama variabelnya jadi 'supabaseClient' (agar tidak bentrok dengan 'supabase' bawaan SDK)
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const cameraInput = document.getElementById('cameraInput');
   const photoCanvas = document.getElementById('photoCanvas');
@@ -77,8 +79,8 @@
     try {
       const fileName = `photo_${Date.now()}.jpg`;
 
-      // 1. Upload Foto ke Supabase Storage
-      const { error: storageError } = await supabase.storage
+      // 1. Upload Foto ke Supabase Storage (Menggunakan supabaseClient)
+      const { error: storageError } = await supabaseClient.storage
         .from('photos')
         .upload(fileName, finalBlob);
 
@@ -86,8 +88,8 @@
 
       const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${fileName}`;
 
-      // 2. Insert Data Log ke Database Supabase
-      const { error: dbError } = await supabase
+      // 2. Insert Data Log ke Database Supabase (Menggunakan supabaseClient)
+      const { error: dbError } = await supabaseClient
         .from('event_logs')
         .insert([{
           full_name: document.getElementById('fullName').value,
