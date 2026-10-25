@@ -1,19 +1,29 @@
+<!-- SDK Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+  // 1. Masukkan URL & ANON KEY Supabase kamu
   const SUPABASE_URL = "https://vaatfevtoftzsupcorht.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhYXRmZXZ0b2Z0enN1cGNvcmh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjAzMDAsImV4cCI6MjEwODQzNjMwMH0.d4PQVlLdy-SEexpmok51D8qxpMG8jpOm4WNMymkv64c";
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // 2. Gunakan nama variabel 'supabaseClient' agar tidak bentrok dengan objek bawaan SDK
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const galleryGrid = document.getElementById('galleryGrid');
 
+  // Load foto pertama kali saat halaman dibuka
   async function loadInitialPhotos() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('event_logs')
       .select('*')
       .eq('is_displayed', true)
       .order('created_at', { ascending: false })
-      .limit(12);
+      .limit(16);
+
+    if (error) {
+      console.error("Gagal memuat foto:", error.message);
+      return;
+    }
 
     if (data && data.length > 0) {
       galleryGrid.innerHTML = '';
@@ -21,6 +31,7 @@
     }
   }
 
+  // Render card gambar ke grid
   function renderCard(item, isNew = false) {
     if (galleryGrid.querySelector('p')) galleryGrid.innerHTML = '';
 
@@ -40,8 +51,8 @@
     }
   }
 
-  // Realtime Subscription Supabase
-  supabase
+  // Realtime Listener dari Database Supabase
+  supabaseClient
     .channel('public:event_logs')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'event_logs' }, payload => {
       if (payload.new.is_displayed) {
