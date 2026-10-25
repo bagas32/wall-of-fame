@@ -135,12 +135,12 @@
           const fileName = `photo_${Date.now()}.jpg`;
 
           const { error: storageError } = await supabaseClient.storage
-            .from('photos')
+            .from('photo')
             .upload(fileName, finalBlob);
 
           if (storageError) throw storageError;
 
-          const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${fileName}`;
+          const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photo/${fileName}`;
 
           const { error: dbError } = await supabaseClient
             .from('event_logs')
