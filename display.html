@@ -38,7 +38,7 @@
   <!-- Grid Gallery Foto -->
   <main class="flex-1 flex items-center justify-center">
     <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-7xl">
-      <!-- Card foto akan dimasukkan via JavaScript -->
+      <!-- Card foto dimasukkan via JS -->
     </div>
   </main>
 
@@ -48,14 +48,13 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // 1. Masukkan URL & ANON KEY Supabase milikmu
       const SUPABASE_URL = "https://vaatfevtoftzsupcorht.supabase.co";
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhYXRmZXZ0b2Z0enN1cGNvcmh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NjAzMDAsImV4cCI6MjEwODQzNjMwMH0.d4PQVlLdy-SEexpmok51D8qxpMG8jpOm4WNMymkv64c";
 
       const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const galleryGrid = document.getElementById('galleryGrid');
 
-      // Load foto pertama kali saat halaman dibuka
+      // Fetch foto awal saat pertama kali dibuka
       async function loadInitialPhotos() {
         const { data, error } = await supabaseClient
           .from('event_logs')
@@ -81,7 +80,7 @@
         }
       }
 
-      // Render card gambar ke grid
+      // Render foto dengan rasio 4:3
       function renderCard(item, isNew = false) {
         if (galleryGrid.querySelector('.col-span-full')) galleryGrid.innerHTML = '';
 
@@ -89,8 +88,11 @@
         card.className = `group relative bg-slate-900/90 rounded-2xl p-2.5 border border-slate-800 shadow-2xl overflow-hidden transform hover:scale-105 transition-all duration-300 ${isNew ? 'animate-float glow-effect ring-2 ring-indigo-400' : ''}`;
         
         card.innerHTML = `
-          <div class="relative overflow-hidden rounded-xl aspect-square">
-            <img src="${item.photo_url}" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
+          <div class="relative overflow-hidden rounded-xl aspect-[4/3]">
+            <img src="${item.photo_url}" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Error'">
+            <div class="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-xs text-center font-medium truncate text-slate-200">
+              ${item.full_name || ''}
+            </div>
           </div>
         `;
 
@@ -101,6 +103,18 @@
         }
       }
 
-      // Realtime Listener dari Supabase
+      // Supabase Realtime Stream
       supabaseClient
         .channel('public:event_logs')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'event_logs' }, payload => {
+          if (payload.new && payload.new.is_displayed) {
+            renderCard(payload.new, true);
+          }
+        })
+        .subscribe();
+
+      loadInitialPhotos();
+    });
+  </script>
+</body>
+</html>
